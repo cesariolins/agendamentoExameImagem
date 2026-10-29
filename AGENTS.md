@@ -24,6 +24,7 @@ Todos rodam na **raiz** do monorepo (npm workspaces). Requisito: Node **≥ 22.1
 | `npm test`                           | Testes das duas pontas (no backend, unitários + e2e)                           |
 | `npm run lint` / `npm run typecheck` | oxlint e `tsc` nas duas pontas                                                 |
 | `npm run build`                      | Build de produção das duas pontas                                              |
+| `npm run format` / `format:check`    | Prettier no repositório inteiro (o CI roda o `format:check`)                   |
 
 Para rodar só uma ponta: `npm run <script> -w backend` ou `-w frontend`. Exemplo: `npm run test:unit -w backend`.
 Documentação interativa da API (Swagger): `http://localhost:3000/api/docs`.
@@ -167,7 +168,7 @@ O design system não define cores de estado: use `red-700` para erro, `emerald-7
 
 Antes de considerar uma tarefa concluída:
 
-1. `npm run lint && npm run typecheck && npm test` verdes na raiz.
+1. `npm run format:check && npm run lint && npm run typecheck && npm test` verdes na raiz (é o que o CI roda).
 2. Regra de negócio nova ou alterada tem teste cobrindo o caso feliz e os de borda.
 3. Erros novos estão no catálogo (`src/comum/erros.ts`) e tratados no front pelo `codigo`.
 4. README e este arquivo continuam verdadeiros: atualize-os no mesmo commit da mudança.
