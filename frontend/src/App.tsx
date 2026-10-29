@@ -17,13 +17,18 @@ export default function App() {
     <div className="mx-auto flex min-h-screen max-w-6xl flex-col border-x border-stone-300">
       <header className="sticky top-0 z-10 border-b border-stone-300 bg-papel/90 backdrop-blur">
         <div className="flex items-center justify-between gap-4 px-4 py-4 md:px-10">
-          <div className="group flex items-center gap-2">
-            <IconeMarca
-              aria-hidden
-              className="text-xl transition-transform duration-700 group-hover:rotate-180"
-            />
-            <span className="text-lg font-bold tracking-tighter">IMAGEM</span>
-            <span className="hidden font-mono text-xs tracking-widest text-stone-500 uppercase sm:inline">
+          <div className="flex items-center gap-4">
+            <div className="group flex items-center gap-2">
+              <IconeMarca
+                aria-hidden
+                className="text-xl transition-transform duration-700 group-hover:rotate-180"
+              />
+              <span className="text-lg leading-none font-bold tracking-tighter [text-box:trim-both_cap_alphabetic]">
+                IMAGEM
+              </span>
+            </div>
+            <span aria-hidden className="hidden h-4 w-px bg-stone-300 sm:block" />
+            <span className="hidden text-[11px] leading-none font-medium tracking-[0.2em] text-stone-500 uppercase [text-box:trim-both_cap_alphabetic] sm:block">
               Agenda de exames
             </span>
           </div>
