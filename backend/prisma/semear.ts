@@ -13,13 +13,9 @@ export interface ExameDoCatalogo {
   duracaoMinutos: number;
 }
 
-/**
- * Lê o catálogo de exames do desafio. O CSV não usa aspas, então `split(',')` basta;
- * qualquer linha fora do formato aborta a carga em vez de gravar dado quebrado.
- */
 export function lerExames(csv = readFileSync(CSV_DE_EXAMES, 'utf8')): ExameDoCatalogo[] {
   const [cabecalho, ...linhas] = csv
-    .replace(/^﻿/, '')
+    .replace(/^\uFEFF/, '')
     .split(/\r?\n/)
     .filter((linha) => linha.trim());
 
@@ -54,10 +50,6 @@ function turnosDosMedicos() {
   );
 }
 
-/**
- * Popula exames, médicos e turnos numa transação. Idempotente: pode rodar de novo
- * sem duplicar registros e sem tocar nos agendamentos.
- */
 export async function semear(prisma: PrismaClient) {
   const exames = lerExames();
   const turnos = turnosDosMedicos();

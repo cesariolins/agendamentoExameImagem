@@ -9,8 +9,7 @@ describe('fuso da clínica (America/Sao_Paulo)', () => {
     });
   });
 
-  it('considera a virada do dia no horário local, não em UTC', () => {
-    // 02:30 UTC do dia 4 ainda é 23:30 do dia 3 em São Paulo.
+  it('considera a virada do dia no horário local: 02:30 UTC do dia 4 ainda é 23:30 do dia 3', () => {
     expect(naClinica(new Date('2026-11-04T02:30:00Z'))).toEqual({
       data: '2026-11-03',
       minutos: paraMinutos('23:30'),
@@ -32,22 +31,23 @@ describe('fuso da clínica (America/Sao_Paulo)', () => {
     expect(naClinica(instante)).toEqual({ data: '2026-11-07', minutos: paraMinutos('21:00') });
   });
 
-  it('obtém o offset do banco de fusos em vez de fixar -03:00', () => {
-    // Em dezembro de 2018 o Brasil ainda tinha horário de verão (UTC-2).
+  it('obtém o offset do banco de fusos em vez de fixar -03:00 (em 2018 havia horário de verão)', () => {
     expect(isoNaClinica(new Date('2018-12-01T12:00:00Z'))).toBe('2018-12-01T10:00:00-02:00');
     expect(instanteNaClinica('2018-12-01', paraMinutos('10:00')).toISOString()).toBe(
       '2018-12-01T12:00:00.000Z',
     );
   });
 
-  it('calcula o dia da semana de uma data de calendário', () => {
-    expect(diaDaSemana('2026-11-01')).toBe(0); // domingo
-    expect(diaDaSemana('2026-11-03')).toBe(2); // terça
-    expect(diaDaSemana('2026-11-07')).toBe(6); // sábado
+  it.each([
+    ['2026-11-01', 0, 'domingo'],
+    ['2026-11-03', 2, 'terça'],
+    ['2026-11-07', 6, 'sábado'],
+  ])('%s cai no dia da semana %i (%s)', (data, dia) => {
+    expect(diaDaSemana(data)).toBe(dia);
   });
 
   describe('agoraNoDia', () => {
-    const agora = new Date('2026-11-03T12:05:00Z'); // 09:05 em São Paulo
+    const agora = new Date('2026-11-03T09:05:00-03:00');
 
     it('hoje: minuto atual local', () => {
       expect(agoraNoDia('2026-11-03', agora)).toBe(paraMinutos('09:05'));
@@ -62,7 +62,8 @@ describe('fuso da clínica (America/Sao_Paulo)', () => {
     });
 
     it('usa a data local mesmo quando em UTC já é o dia seguinte', () => {
-      const noite = new Date('2026-11-04T01:00:00Z'); // 22:00 do dia 3 em São Paulo
+      const noite = new Date('2026-11-03T22:00:00-03:00');
+      expect(noite.toISOString()).toBe('2026-11-04T01:00:00.000Z');
       expect(agoraNoDia('2026-11-03', noite)).toBe(paraMinutos('22:00'));
       expect(agoraNoDia('2026-11-04', noite)).toBeUndefined();
     });

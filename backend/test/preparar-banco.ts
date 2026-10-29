@@ -5,7 +5,6 @@ import { PrismaClient } from '../src/generated/prisma/client.js';
 import { criarAdapter } from '../src/prisma/adapter.js';
 import { CAMINHO_DO_BANCO_DE_TESTE, URL_DO_BANCO_DE_TESTE } from './banco-de-teste.js';
 
-/** globalSetup dos testes e2e: banco novo, migrations reais (com o trigger) e carga inicial. */
 export default async function prepararBanco() {
   for (const sufixo of ['', '-journal', '-wal', '-shm']) {
     rmSync(CAMINHO_DO_BANCO_DE_TESTE + sufixo, { force: true });

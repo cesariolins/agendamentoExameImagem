@@ -77,16 +77,32 @@ Premissas adotadas (detalhadas no README):
 
 ### Domínio puro (`src/agenda/`)
 
-- `regras.ts` trabalha em **minutos desde a meia-noite** no horário local da clínica. Expõe `motivoDeRecusa(contexto, inicio)`, que devolve o motivo ou `null`, e `gerarHorarios(contexto)`, que é a grade filtrada pelos horários com `motivoDeRecusa === null`.
-- A ordem de verificação é: passado → fora do expediente → fora da grade → conflito.
+- `regras.ts` trabalha em **minutos desde a meia-noite** no horário local da clínica (08:40 → 520), com intervalos semiabertos `[inicio, fim)`. Não depende de framework, banco nem fuso.
+- `ContextoDoDia` traz tudo o que a regra precisa:
+  - `turnos`: os turnos do médico no dia da semana consultado;
+  - `duracaoMinutos`: a duração do exame;
+  - `ocupados`: os agendamentos ativos do médico na data;
+  - `agoraMinutos`: o minuto atual quando a data é hoje, `MINUTOS_NO_DIA` (1440) quando a data já passou e `undefined` quando é futura. Quem calcula esse valor é o `agoraNoDia()`, em `fuso.ts`.
+- `gradeDoDia()` gera os inícios possíveis de cada turno. `motivoDeRecusa(contexto, inicio)` devolve o motivo da recusa ou `null`, verificando nesta ordem: passado → fora do expediente → fora da grade → conflito. `gerarHorarios(contexto)` é a grade filtrada por `motivoDeRecusa === null`.
 - **Fonte única de verdade:** o `POST /agendamentos` valida o horário pedido com a mesma `motivoDeRecusa` usada para listar os horários livres. O que a tela oferece e o que a API aceita nunca divergem; um teste percorre os 1440 minutos do dia para provar isso.
-- `fuso.ts` converte instante ↔ (data local, minutos) com `Intl` (sem dependências). O offset é obtido do banco de fusos, não fixado no código.
+- `fuso.ts` converte instante ↔ (data local, minutos) só com `Intl`, usando `timeZoneName: 'longOffset'`. O offset é obtido do banco de fusos, não fixado no código. `instanteNaClinica()` faz duas passadas, para acertar o caso de o offset mudar entre o palpite e o resultado. `diaDaSemana()` usa UTC, porque uma data de calendário não tem fuso.
 
 ### Persistência e concorrência
 
-- Prisma 7 com o driver adapter `better-sqlite3`, configurado em um único lugar (`src/prisma/adapter.ts`). As datas são gravadas como **inteiro epoch-ms (UTC)** (`timestampFormat: "unixepoch-ms"`).
+- Prisma 7 com o driver adapter `better-sqlite3`, configurado em um único lugar (`src/prisma/adapter.ts`), que a API, o seed e os testes usam. As datas são gravadas como **inteiro epoch-ms (UTC)** (`timestampFormat: "unixepoch-ms"`): o trigger compara números, e uma data em outro formato é rejeitada por ele em vez de ser comparada errado.
+- Sem `DATABASE_URL`, o banco é `backend/dev.db`, por **caminho absoluto** (`URL_DO_BANCO`), para a CLI do Prisma, a API e o seed abrirem sempre o mesmo arquivo, qualquer que seja o diretório atual. O `prisma7.config.ts` importa essa mesma constante.
+- **Modelo de dados** (`prisma/schema.prisma`):
+  - `Exame`: o `id` é o mesmo do CSV, e `nomeBusca` guarda o nome em minúsculas e sem acentos.
+  - `Medico`: o `crm` é único.
+  - `Turno`: `diaSemana` vai de 0 (domingo) a 6 (sábado), e `inicio`/`fim` são `"HH:MM"` no horário da clínica.
+  - `Agendamento`: o `fim` é derivado (início + duração do exame) e congelado no momento do agendamento. O `status` é `ATIVO` ou `CANCELADO`, e o cancelamento preenche `canceladoEm`.
 - **A anti-sobreposição é garantida pelo banco**, não só pelo código. Triggers `BEFORE INSERT` e `BEFORE UPDATE` em `Agendamento` dão `RAISE(ABORT, 'CONFLITO_DE_HORARIO')` quando existe um agendamento ativo do mesmo médico com intervalo cruzado. Como o SQLite serializa as escritas e o trigger roda dentro do próprio INSERT, checar e gravar é atômico.
-- Fluxo de um `POST /agendamentos`: valida o DTO → carrega o exame, o médico, os turnos e os agendamentos do dia → `motivoDeRecusa` (mensagem amigável) → `create`. Se outro pedido gravou no meio do caminho, o trigger aborta e o erro vira **409**.
+- Fluxo de um `POST /agendamentos`:
+  1. valida o DTO;
+  2. recusa um início com segundos como `HORARIO_FORA_DA_GRADE`, porque a grade é de minutos cheios;
+  3. `MedicosService.carregarAgendaDoDia()` monta o `ContextoDoDia`;
+  4. `motivoDeRecusa` dá a mensagem amigável;
+  5. `create`. Se outro pedido gravou um horário cruzado entre a checagem e o INSERT, o trigger aborta e o erro vira **409**.
 - O erro do trigger chega pelo Prisma como `P2003`, o mesmo código de violação de FK. Use **somente** `ehConflitoDeHorario()` (`src/prisma/erros-do-banco.ts`) para identificá-lo; nunca mapeie `P2003` direto para 409.
 - Não envolva checagem e inserção em `$transaction` interativo: não acrescenta garantia e, com vários processos, troca o 409 por `SQLITE_BUSY`.
 - **Seed** (`prisma/semear.ts`): os exames são lidos de `dados/exames.csv`, com validação linha a linha, e os médicos vêm de `prisma/medicos.ts`, que espelha as tabelas de `dados/medicos.md`. A carga é idempotente (upsert) e nunca toca nos agendamentos.
@@ -150,10 +166,11 @@ O design system não define cores de estado: use `red-700` para erro, `emerald-7
 ## Convenções
 
 - **Idioma:** o domínio fica em **português**, para bater com o enunciado (`Exame`, `Medico`, `Agendamento`, `gerarHorarios`, `/exames`). Os nomes impostos pelos frameworks ficam como são (`onModuleInit`, `useQuery`). Mensagens, UI e documentação em pt-BR.
+- **Sem comentários no código** (TS, TSX, SQL, schema do Prisma e configs): o código se explica por nomes, tipos e testes descritivos. O que precisar de explicação entra neste arquivo.
 - **ESM no backend:** imports relativos terminam em `.js` (`import { X } from './x.js'`).
 - **Simplicidade:** nada de interface com uma implementação só, repositório genérico ou camada "por cerimônia". A regra de negócio mora em funções puras, o service orquestra e o controller só traduz HTTP.
 - **Validação nas bordas:** os DTOs usam `class-validator`, com mensagens em pt-BR. O domínio assume dados já validados. Validadores reutilizáveis (`IsData`, `IsDataHoraComFuso`, `ID_DA_ROTA`) ficam em `src/comum/validacao.ts`.
-- **Swagger sem duplicação:** as classes de entrada e de resposta ficam em arquivos `*.dto.ts`, e o plugin do `@nestjs/swagger` (`nest-cli.json`) gera a documentação a partir dos tipos, dos decorators do `class-validator` e dos comentários JSDoc (`@example`). Os erros de cada rota são documentados com `@RespostasDeErro(...códigos)`, direto do catálogo.
+- **Swagger sem duplicação:** as classes de entrada e de resposta ficam em arquivos `*.dto.ts`, e o plugin do `@nestjs/swagger` (`nest-cli.json`) gera a documentação a partir dos tipos e dos decorators do `class-validator`. Descrições e exemplos entram com `@ApiProperty({ description, example })`. Os erros de cada rota são documentados com `@RespostasDeErro(...códigos)`, direto do catálogo.
 - **Testes:**
   - Domínio: unitários com os exemplos do enunciado como casos.
   - API e banco: e2e contra um SQLite real (`backend/test.db`), sem mock de Prisma. O `globalSetup` (`test/preparar-banco.ts`) recria o arquivo, aplica as migrations reais e roda o seed. Os arquivos rodam em sequência, e cada um limpa os agendamentos que criar.

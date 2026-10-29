@@ -54,11 +54,6 @@ export class MedicosService {
     };
   }
 
-  /**
-   * Reúne o que as regras de agenda precisam para um médico, uma data e um exame:
-   * turnos do dia da semana, agendamentos ativos do dia e o "agora" relativo à data.
-   * Usado tanto para listar horários quanto para validar um novo agendamento.
-   */
   async carregarAgendaDoDia(medicoId: number, data: string, exameId: number) {
     const [medico, exame] = await Promise.all([
       this.prisma.medico.findUnique({

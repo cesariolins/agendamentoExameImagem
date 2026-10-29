@@ -1,20 +1,35 @@
 import { applyDecorators } from '@nestjs/common';
-import { ApiResponse } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiResponse } from '@nestjs/swagger';
 import { CATALOGO_DE_ERROS, type CodigoDeErro } from './erros.js';
 
-/** Formato de toda resposta de erro da API (documentação Swagger). */
-export class RespostaDeErro {
-  /** Status HTTP */
-  statusCode: number;
-  /** Código estável para tratamento no cliente */
-  codigo: string;
-  /** Mensagem pronta para exibir ao usuário */
-  mensagem: string;
-  /** Erros por campo, quando a validação falha */
-  detalhes?: { campo: string; mensagens: string[] }[];
+export class DetalheDeCampoResposta {
+  @ApiProperty({ example: 'pacienteNome' })
+  campo: string;
+
+  @ApiProperty({ example: ['pacienteNome deve ter entre 3 e 120 caracteres.'] })
+  mensagens: string[];
 }
 
-/** Documenta no Swagger os erros que uma rota pode devolver, agrupados por status HTTP. */
+export class RespostaDeErro {
+  @ApiProperty({ example: 422 })
+  statusCode: number;
+
+  @ApiProperty({
+    description: 'Código estável para tratamento no cliente',
+    example: 'FORA_DO_EXPEDIENTE',
+  })
+  codigo: string;
+
+  @ApiProperty({ description: 'Mensagem pronta para exibir ao usuário' })
+  mensagem: string;
+
+  @ApiPropertyOptional({
+    description: 'Erros por campo, quando a validação falha',
+    type: [DetalheDeCampoResposta],
+  })
+  detalhes?: DetalheDeCampoResposta[];
+}
+
 export function RespostasDeErro(...codigos: CodigoDeErro[]) {
   const porStatus = new Map<number, string[]>();
   for (const codigo of codigos) {

@@ -26,10 +26,6 @@ const doCatalogo = (codigo: CodigoDeErro): RespostaDeErro => ({
   mensagem: CATALOGO_DE_ERROS[codigo].mensagem,
 });
 
-/**
- * Converte qualquer exceção na resposta padrão `{ statusCode, codigo, mensagem, detalhes? }`.
- * Exceções desconhecidas viram 500 sem vazar detalhes internos (que ficam só no log).
- */
 @Catch()
 export class FiltroDeErros implements ExceptionFilter {
   private readonly logger = new Logger(FiltroDeErros.name);
@@ -48,7 +44,6 @@ export class FiltroDeErros implements ExceptionFilter {
       };
     }
 
-    // Exceções do próprio Nest/Express: rota inexistente, JSON malformado, corpo grande demais etc.
     if (excecao instanceof HttpException) {
       const status = excecao.getStatus();
       if (status === 404) return doCatalogo('ROTA_NAO_ENCONTRADA');

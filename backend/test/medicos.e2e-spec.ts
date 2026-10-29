@@ -21,7 +21,7 @@ afterAll(async () => {
 
 const SEGUNDA = '2030-01-07';
 const DOMINGO = '2030-01-06';
-const HELENA = 1; // Seg–Sex 08:00–12:00 e 14:00–18:00
+const HELENA = 1;
 const ULTRASSOM_40_MIN = 7;
 const RAIO_X_20_MIN = 1;
 

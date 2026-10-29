@@ -7,7 +7,6 @@ import type { ExameResposta } from './exames.dto.js';
 export class ExamesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Cada palavra da busca precisa aparecer no nome: "raio torax" acha "Raio-X de Tórax". */
   buscar(busca = ''): Promise<ExameResposta[]> {
     const palavras = normalizarTexto(busca).split(/\s+/).filter(Boolean);
     return this.prisma.exame.findMany({

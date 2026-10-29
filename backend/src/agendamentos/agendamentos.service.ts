@@ -43,10 +43,8 @@ export class AgendamentosService {
 
   async criar(dto: CriarAgendamentoDto): Promise<AgendamentoResposta> {
     const inicio = new Date(dto.inicio);
-    // A grade é de minutos cheios: um início com segundos nunca coincide com um horário oferecido.
     if (inicio.getTime() % 60_000 !== 0) throw new ErroDeNegocio('HORARIO_FORA_DA_GRADE');
 
-    // Mesma regra que gera os horários livres: o que a tela oferece é exatamente o que a API aceita.
     const { data, minutos } = naClinica(inicio);
     const { exame, contexto } = await this.medicos.carregarAgendaDoDia(
       dto.medicoId,
@@ -69,7 +67,6 @@ export class AgendamentosService {
       });
       return apresentar(criado);
     } catch (erro) {
-      // Outro pedido gravou um horário cruzado entre a checagem acima e este INSERT: o trigger barrou.
       if (ehConflitoDeHorario(erro)) throw new ErroDeNegocio('CONFLITO_DE_HORARIO');
       throw erro;
     }
@@ -94,7 +91,6 @@ export class AgendamentosService {
     return agendamentos.map(apresentar);
   }
 
-  /** Cancelamento lógico: libera o horário e mantém o histórico. Cancelar de novo não muda nada. */
   async cancelar(id: number): Promise<AgendamentoResposta> {
     const agendamento = await this.prisma.agendamento.findUnique({
       where: { id },

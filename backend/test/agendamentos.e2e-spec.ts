@@ -20,7 +20,7 @@ afterAll(async () => {
 });
 
 const SEGUNDA = '2030-01-07';
-const HELENA = 1; // Seg–Sex 08:00–12:00 e 14:00–18:00
+const HELENA = 1;
 const RAFAEL = 2;
 const ULTRASSOM_40_MIN = 7;
 const RAIO_X_20_MIN = 1;
@@ -82,9 +82,8 @@ describe('POST /api/agendamentos', () => {
     expect(body.pacienteNome).toBe('Maria da Silva');
   });
 
-  it('recusa horário que cruza outro agendamento do médico → 409', async () => {
+  it('recusa horário que cruza outro agendamento do médico (08:40–09:20 × 09:00–09:20) → 409', async () => {
     await agendar(pedido({ exameId: RAIO_X_20_MIN, inicio: emSegunda('09:00') })).expect(201);
-    // 08:40 + 40 min = 09:20, que cruza 09:00–09:20.
     const { body } = await agendar(pedido()).expect(409);
     expect(body).toEqual({
       statusCode: 409,
@@ -93,8 +92,7 @@ describe('POST /api/agendamentos', () => {
     });
   });
 
-  it('permite o mesmo horário com outro médico', async () => {
-    // Com 20 min, 08:00 está na grade dos dois (Helena começa às 08:00 e Rafael às 07:00).
+  it('permite o mesmo horário com outro médico, quando está na grade dos dois', async () => {
     const raioX = { exameId: RAIO_X_20_MIN, inicio: emSegunda('08:00') };
     await agendar(pedido(raioX)).expect(201);
     await agendar(pedido({ ...raioX, medicoId: RAFAEL })).expect(201);

@@ -5,7 +5,6 @@ import { AppModule } from '../src/app.module.js';
 import { configurarApp } from '../src/configurar-app.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
-/** Sobe a aplicação real (mesmos pipes e filtros do main.ts) contra o test.db. */
 export async function criarAppDeTeste() {
   const modulo = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app: INestApplication = configurarApp(modulo.createNestApplication());

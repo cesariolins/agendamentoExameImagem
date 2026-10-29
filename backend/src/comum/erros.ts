@@ -1,6 +1,3 @@
-/**
- * Catálogo único de erros da API. O front decide o que fazer pelo `codigo`, nunca pela mensagem.
- */
 export const CATALOGO_DE_ERROS = {
   DADOS_INVALIDOS: { status: 400, mensagem: 'Dados inválidos. Verifique os campos informados.' },
   EXAME_NAO_ENCONTRADO: { status: 404, mensagem: 'Exame não encontrado.' },
@@ -37,7 +34,6 @@ export interface DetalheDeCampo {
   mensagens: string[];
 }
 
-/** Erro esperado da aplicação: vira a resposta HTTP do catálogo no filtro global. */
 export class ErroDeNegocio extends Error {
   constructor(
     readonly codigo: CodigoDeErro,

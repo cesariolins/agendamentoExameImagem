@@ -2,15 +2,10 @@ import { PrismaClient } from '../src/generated/prisma/client.js';
 import { criarAdapter } from '../src/prisma/adapter.js';
 import { ehConflitoDeHorario } from '../src/prisma/erros-do-banco.js';
 
-/**
- * Testa a garantia do banco diretamente, sem passar pela API nem pelas regras do domínio:
- * mesmo que o código deixe passar, o trigger não permite sobreposição.
- */
-
 const prisma = new PrismaClient({ adapter: criarAdapter() });
 
-const DIA = '2030-01-07'; // uma segunda-feira futura
-const em = (hora: string) => new Date(`${DIA}T${hora}:00-03:00`);
+const SEGUNDA_FUTURA = '2030-01-07';
+const em = (hora: string) => new Date(`${SEGUNDA_FUTURA}T${hora}:00-03:00`);
 
 function agendamento(
   inicio: string,
@@ -45,7 +40,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-describe('trigger anti-sobreposição', () => {
+describe('trigger anti-sobreposição (direto no banco, sem passar pela API)', () => {
   it('aceita agendamentos que apenas se encostam', async () => {
     await prisma.agendamento.create({ data: agendamento('08:00', '08:40') });
     await prisma.agendamento.create({ data: agendamento('08:40', '09:20') });
@@ -104,9 +99,7 @@ describe('trigger anti-sobreposição', () => {
     expect(await prisma.agendamento.count()).toBe(0);
   });
 
-  it('com pedidos simultâneos em conexões diferentes, só um é gravado', async () => {
-    // Cinco "processos" (cada PrismaClient abre a sua conexão com o arquivo) disputando
-    // horários que se cruzam, com durações diferentes.
+  it('com pedidos simultâneos em cinco conexões (como cinco processos), só um é gravado', async () => {
     const clientes = Array.from({ length: 5 }, () => new PrismaClient({ adapter: criarAdapter() }));
     const pedidos: [string, string][] = [
       ['08:00', '08:40'],

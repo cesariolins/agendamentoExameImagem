@@ -27,7 +27,6 @@ const pedido = (paciente: string, exameId: number, hora: string) => ({
   inicio: `2030-01-07T${hora}:00-03:00`,
 });
 
-/** Dispara todos os pedidos ao mesmo tempo e devolve os status HTTP e os corpos. */
 async function emParalelo(corpos: object[]) {
   const respostas = await Promise.all(
     corpos.map((corpo) => t.api().post('/api/agendamentos').send(corpo)),
@@ -56,13 +55,13 @@ describe('pedidos simultâneos', () => {
     expect(await t.prisma.agendamento.count()).toBe(1);
   });
 
-  it('mesmo se a checagem da aplicação deixar passar, o banco impede a duplicidade', async () => {
-    // Simula a corrida no pior caso: todos os pedidos leem a agenda "vazia" antes de qualquer gravação.
-    vi.spyOn(t.prisma.agendamento, 'findMany').mockResolvedValue([]);
+  it('pior caso: todos leem a agenda vazia antes de gravar, e ainda assim o banco impede a duplicidade', async () => {
+    const agendaSempreVazia = vi.spyOn(t.prisma.agendamento, 'findMany').mockResolvedValue([]);
     const corpos = Array.from({ length: 10 }, (_, i) => pedido(`Paciente ${i + 1}`, 7, '08:40'));
 
     const { status, conflitos } = await emParalelo(corpos);
 
+    expect(agendaSempreVazia).toHaveBeenCalledTimes(10);
     expect(status).toEqual([201, ...Array(9).fill(409)]);
     expect(conflitos.every((codigo) => codigo === 'CONFLITO_DE_HORARIO')).toBe(true);
     expect(await t.prisma.agendamento.count()).toBe(1);

@@ -9,7 +9,6 @@ export default defineConfig({
     include: ['test/**/*.e2e-spec.ts'],
     globalSetup: ['./test/preparar-banco.ts'],
     env: { DATABASE_URL: URL_DO_BANCO_DE_TESTE },
-    // Todos os arquivos compartilham o mesmo test.db: rodar em sequência evita interferência.
     fileParallelism: false,
   },
 });

@@ -1,9 +1,3 @@
-/**
- * Transcrição estruturada de dados/medicos.md (texto livre para humanos).
- * Cada linha espelha uma linha das tabelas do arquivo original.
- */
-
-/** 0 = domingo … 6 = sábado (mesma convenção de Date#getDay). Nenhum médico atende aos domingos. */
 const [SEG, TER, QUA, QUI, SEX, SAB] = [1, 2, 3, 4, 5, 6];
 
 export interface TurnoSemanal {

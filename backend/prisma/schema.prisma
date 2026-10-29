@@ -1,7 +1,3 @@
-// Modelo de dados do agendamento de exames.
-// A regra "sem sobreposição" é garantida por trigger (veja a migration trigger_sem_sobreposicao),
-// pois o Prisma não modela restrições de intervalo.
-
 generator client {
   provider            = "prisma-client"
   output              = "../src/generated/prisma"
@@ -14,10 +10,8 @@ datasource db {
 }
 
 model Exame {
-  /// Mesmo id do catálogo (dados/exames.csv)
   id             Int           @id
   nome           String
-  /// Nome em minúsculas e sem acentos, para busca ("torax" acha "Tórax")
   nomeBusca      String
   duracaoMinutos Int
   agendamentos   Agendamento[]
@@ -34,9 +28,7 @@ model Medico {
 model Turno {
   id        Int    @id @default(autoincrement())
   medicoId  Int
-  /// 0 = domingo … 6 = sábado
   diaSemana Int
-  /// "HH:MM" no horário da clínica
   inicio    String
   fim       String
   medico    Medico @relation(fields: [medicoId], references: [id])
@@ -54,9 +46,7 @@ model Agendamento {
   pacienteNome String
   exameId      Int
   medicoId     Int
-  /// Instante UTC, gravado como inteiro epoch-ms (veja src/prisma/adapter.ts)
   inicio       DateTime
-  /// Derivado: inicio + duração do exame no momento do agendamento
   fim          DateTime
   status       StatusAgendamento @default(ATIVO)
   criadoEm     DateTime          @default(now())

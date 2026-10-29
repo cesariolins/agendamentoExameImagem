@@ -28,7 +28,6 @@ describe('carga inicial', () => {
     expect(await prisma.medico.count()).toBe(5);
     expect(await prisma.turno.count()).toBe(36);
 
-    // Thiago Fontes: Ter–Sáb de manhã e, além disso, Qua e Sex à noite.
     const quartaDoThiago = await prisma.turno.findMany({
       where: { medicoId: 4, diaSemana: 3 },
       select: { inicio: true, fim: true },
@@ -39,8 +38,8 @@ describe('carga inicial', () => {
       { inicio: '19:00', fim: '22:00' },
     ]);
 
-    // Ninguém atende aos domingos.
-    expect(await prisma.turno.count({ where: { diaSemana: 0 } })).toBe(0);
+    const DOMINGO = 0;
+    expect(await prisma.turno.count({ where: { diaSemana: DOMINGO } })).toBe(0);
   });
 
   it('é idempotente e preserva os agendamentos', async () => {

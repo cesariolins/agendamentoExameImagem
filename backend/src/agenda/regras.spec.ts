@@ -10,7 +10,6 @@ import {
   sobrepoe,
 } from './regras.js';
 
-/** intervalo('09:20', '10:00') → { inicio: 560, fim: 600 } */
 const intervalo = (inicio: string, fim: string): Intervalo => ({
   inicio: paraMinutos(inicio),
   fim: paraMinutos(fim),
@@ -86,9 +85,7 @@ describe('gerarHorarios', () => {
     });
   });
 
-  it('mantém a grade ancorada no início do turno mesmo com agendamento desalinhado', () => {
-    // Um exame de 20 min marcado às 08:20 bloqueia o horário de 40 min das 08:00,
-    // mas a grade de 40 min não "escorrega" para 08:40 → 09:20 → …: ela continua igual.
+  it('um exame de 20 min às 08:20 bloqueia só o horário de 40 min das 08:00; a grade não se desloca', () => {
     expect(horarios({ duracaoMinutos: 40, ocupados: [intervalo('08:20', '08:40')] })).toEqual([
       '08:40',
       '09:20',
@@ -98,15 +95,14 @@ describe('gerarHorarios', () => {
     ]);
   });
 
-  it('reinicia a grade em cada turno do dia', () => {
-    const turnos = [intervalo('14:00', '18:00'), manha]; // fora de ordem de propósito
-    const lista = horarios({ duracaoMinutos: 40, turnos });
+  it('reinicia a grade em cada turno do dia, mesmo com os turnos fora de ordem', () => {
+    const turnosForaDeOrdem = [intervalo('14:00', '18:00'), manha];
+    const lista = horarios({ duracaoMinutos: 40, turnos: turnosForaDeOrdem });
     expect(lista.slice(4, 8)).toEqual(['10:40', '11:20', '14:00', '14:40']);
     expect(lista.at(-1)).toBe('17:20');
   });
 
-  it('descarta o último passo que estouraria o turno noturno', () => {
-    // 19:00–22:00 com 40 min: 21:40 terminaria às 22:20.
+  it('descarta o último passo que estouraria o turno noturno (21:40 terminaria às 22:20)', () => {
     expect(horarios({ duracaoMinutos: 40, turnos: [intervalo('19:00', '22:00')] })).toEqual([
       '19:00',
       '19:40',
@@ -155,7 +151,7 @@ describe('motivoDeRecusa', () => {
 
   it('recusa bloco que começa antes ou termina depois do turno', () => {
     expect(motivo('07:20')).toBe('FORA_DO_EXPEDIENTE');
-    expect(motivo('11:40')).toBe('FORA_DO_EXPEDIENTE'); // 11:40 + 40 min = 12:20
+    expect(motivo('11:40')).toBe('FORA_DO_EXPEDIENTE');
     expect(motivo('13:00')).toBe('FORA_DO_EXPEDIENTE');
   });
 
@@ -178,9 +174,7 @@ describe('motivoDeRecusa', () => {
     expect(motivo('09:20', { agoraMinutos: MINUTOS_NO_DIA })).toBe('HORARIO_NO_PASSADO');
   });
 
-  it('concorda com gerarHorarios em todos os minutos do dia', () => {
-    // A API valida com motivoDeRecusa e a tela mostra gerarHorarios: nenhum início
-    // pode ser aceito sem estar na lista, nem estar na lista e ser recusado.
+  it('concorda com gerarHorarios em todos os minutos do dia: a API aceita exatamente o que a tela oferece', () => {
     const cenarios: ContextoDoDia[] = [
       ctx,
       { ...ctx, duracaoMinutos: 20, agoraMinutos: paraMinutos('09:05') },
