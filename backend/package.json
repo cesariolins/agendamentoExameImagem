@@ -9,7 +9,7 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
-    "lint": "oxlint --type-aware src/ test/",
+    "lint": "oxlint --type-aware src/ test/ prisma/",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run",
