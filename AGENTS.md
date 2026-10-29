@@ -37,7 +37,7 @@ Documentação interativa da API (Swagger): `http://localhost:3000/api/docs`.
 ├─ dados/                     # insumos originais do desafio (somente leitura)
 ├─ .github/workflows/ci.yml   # lint, typecheck, testes e build a cada push
 ├─ backend/
-│  ├─ prisma/                 # schema.prisma, migrations (inclui o trigger), seed
+│  ├─ prisma/                 # schema, migrations (inclui o trigger), seed e medicos.ts (transcrição de medicos.md)
 │  ├─ src/
 │  │  ├─ agenda/              # DOMÍNIO PURO: regras de horário e fuso. Zero imports de Nest/Prisma
 │  │  ├─ comum/               # catálogo de erros, filtro global de exceções, utilitários de texto
@@ -89,6 +89,8 @@ Premissas adotadas (detalhadas no README):
 - Fluxo de um `POST /agendamentos`: valida o DTO → carrega o exame, o médico, os turnos e os agendamentos do dia → `motivoDeRecusa` (mensagem amigável) → `create`. Se outro pedido gravou no meio do caminho, o trigger aborta e o erro vira **409**.
 - O erro do trigger chega pelo Prisma como `P2003`, o mesmo código de violação de FK. Use **somente** `ehConflitoDeHorario()` (`src/prisma/erros-do-banco.ts`) para identificá-lo; nunca mapeie `P2003` direto para 409.
 - Não envolva checagem e inserção em `$transaction` interativo: não acrescenta garantia e, com vários processos, troca o 409 por `SQLITE_BUSY`.
+- **Seed** (`prisma/semear.ts`): os exames são lidos de `dados/exames.csv`, com validação linha a linha, e os médicos vêm de `prisma/medicos.ts`, que espelha as tabelas de `dados/medicos.md`. A carga é idempotente (upsert) e nunca toca nos agendamentos.
+- **Mudou o `schema.prisma`?** Dentro de `backend/`, rode `npx prisma migrate dev --name <descricao>`. O client é gerado em `src/generated/prisma` (fora do git; o `postinstall` recria).
 
 ### API
 
@@ -152,7 +154,7 @@ O design system não define cores de estado: use `red-700` para erro, `emerald-7
 - **Validação nas bordas:** os DTOs usam `class-validator`, com mensagens em pt-BR. O domínio assume dados já validados.
 - **Testes:**
   - Domínio: unitários com os exemplos do enunciado como casos.
-  - API: e2e com supertest contra um SQLite real (`test.db`), sem mock de Prisma.
+  - API e banco: e2e contra um SQLite real (`backend/test.db`), sem mock de Prisma. O `globalSetup` (`test/preparar-banco.ts`) recria o arquivo, aplica as migrations reais e roda o seed. Os arquivos rodam em sequência, e cada um limpa os agendamentos que criar.
   - Front: Vitest + Testing Library com `fetch` mockado.
   - Relógio: `vi.useFakeTimers({ toFake: ['Date'] })` + `vi.setSystemTime()`; não existe abstração de relógio.
 - **Commits:** pequenos, em [Conventional Commits](https://www.conventionalcommits.org/pt-br/), em português (`feat(api): …`, `test(agenda): …`, `docs: …`). Cada commit deixa `lint`, `typecheck` e `test` verdes.
