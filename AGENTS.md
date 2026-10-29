@@ -48,10 +48,13 @@ Documentação interativa da API (Swagger): `http://localhost:3000/api/docs`.
 │  └─ test/                   # testes e2e (supertest + SQLite real), incluindo concorrência
 └─ frontend/
    └─ src/
-      ├─ api/                 # cliente HTTP tipado, tipos da API e hooks do TanStack Query
-      ├─ agendar/             # fluxo de agendamento em etapas
-      ├─ agendamentos/        # lista e cancelamento
-      └─ comum/               # datas no fuso da clínica, debounce, estados (carregando/erro/vazio)
+      ├─ App.tsx              # cabeçalho, abas "Agendar" / "Agendamentos" e rodapé
+      ├─ index.css            # Tailwind 4 + tokens do design (@theme)
+      ├─ api/                 # cliente HTTP tipado (ErroApi), tipos da API e hooks do TanStack Query
+      ├─ agendar/             # fluxo em etapas: busca, médico, data/horário, confirmação e sucesso
+      ├─ agendamentos/        # lista com filtro por situação e cancelamento em dois passos
+      ├─ comum/               # datas no fuso da clínica, classes de estilo, estados de tela, debounce
+      └─ test/                # setup do Vitest e apiFalsa (fetch simulado por rota + fixtures)
 ```
 
 ## Regras de negócio (invariantes)
@@ -135,21 +138,37 @@ Formato único, produzido pelo filtro global (`src/comum/filtro-de-erros.ts`): `
 
 ## Arquitetura do frontend
 
-- **Fluxo em etapas numa página só:** exame → médico → data → horário → nome do paciente → confirmação. Cada escolha feita vira um resumo com "alterar"; mudar uma etapa limpa as seguintes.
-- **Estado do servidor no TanStack Query** (cache, carregando, erro). O estado local da tela fica em `useState`. Não há Redux nem router: as duas abas ("Agendar" e "Agendamentos") são estado local.
-- **Cliente HTTP** em `src/api/cliente.ts` usa `fetch` e converte respostas de erro em `ErroApi { status, codigo, mensagem }`. Os componentes decidem a mensagem pelo `codigo`, nunca pelo texto.
-- **Conflito (409) ou horário que passou (422):** avisar, invalidar a consulta de horários e limpar o horário escolhido, mantendo o nome digitado.
-- Toda etapa trata os estados de **carregando, erro e vazio**, com mensagens específicas (ex.: "Dr. Thiago não atende às segundas").
-- O Vite faz proxy de `/api` para `http://localhost:3000`; o front não precisa de CORS nem de variável de ambiente.
+- **Fluxo em etapas numa página só** (`agendar/FluxoDeAgendamento.tsx`): 01 Exame → 02 Médico → 03 Data e horário → 04 Confirmação.
+  - A etapa atual é **derivada** do estado: a primeira escolha que falta. Não existe um "passo" guardado à parte.
+  - Uma etapa concluída vira um resumo com o botão "Alterar". Alterar uma etapa limpa só o que deixa de valer: o horário, que depende do exame, do médico e da data. O médico e a data compatíveis são mantidos.
+  - Quando a etapa muda, o foco vai para o título dela (acessibilidade), com rolagem suave.
+- **Data e horário:**
+  - Chips com os próximos dias de atendimento do médico (`proximosDiasDeAtendimento`) e um `input type="date"` nativo com `min` = hoje na clínica.
+  - A grade agrupa os horários por manhã, tarde e noite.
+  - Mensagens distintas para cada caso:
+    - data passada (nem consulta a API);
+    - médico que não atende no dia (`atendeNoDia = false`, com os dias de atendimento);
+    - "não há mais horários hoje";
+    - "todos ocupados".
+- **Estado do servidor no TanStack Query** (`api/consultas.ts`).
+  - O estado da tela fica em `useState`. Não há Redux nem router: as duas abas são estado local do `App`.
+  - Exames e médicos têm `staleTime: Infinity`, porque são dados estáticos.
+  - Criar e cancelar invalidam `['horarios']` e `['agendamentos']`.
+  - Erros 4xx não são repetidos; falhas de rede e 5xx são repetidas até 2 vezes.
+- **Cliente HTTP** (`api/cliente.ts`): usa `fetch` e converte erros em `ErroApi { status, codigo, mensagem, detalhes }`. Uma falha de rede vira `SEM_CONEXAO` (status 0). Os componentes decidem o comportamento pelo `codigo`, nunca pelo texto.
+- **Horário que deixou de valer** (`CONFLITO_DE_HORARIO` ou outro 422 de horário na confirmação): o front avisa, volta para a etapa 03 com a grade recarregada e mantém o nome digitado. Erros de campo (`detalhes`) aparecem junto do campo.
+- **Datas na tela:** a API sempre devolve ISO no fuso da clínica (`…-03:00`), então hora e data saem direto da string (`horaDe`, `dataDe`). O único cálculo de fuso no front é "hoje na clínica" (`Intl` com `America/Sao_Paulo`).
+- Toda tela trata os estados de **carregando, erro (com "Tentar novamente") e vazio** (`comum/Estados.tsx`).
+- O Vite faz proxy de `/api` para `http://localhost:3000` (também no `vite preview`); o front não precisa de CORS nem de variável de ambiente.
 - Os tipos da API ficam duplicados em `src/api/tipos.ts` de propósito: um pacote compartilhado custaria mais (build, project references) do que meia dúzia de tipos.
 
 ### Design
 
-Inspirado no design system _Digital Architect_ (aura.build): claro, editorial e com bordas finas. Use os tokens abaixo e não invente novos sem necessidade.
+Inspirado no design system _Digital Architect_ (aura.build): claro, editorial e com bordas finas. Os tokens estão no `@theme` de `src/index.css` (`papel`, `tinta`, `ease-arquiteto`, animação `animate-surgir`), e as combinações de classes reutilizadas ficam em `src/comum/estilos.ts` (`rotulo`, `campo`, `botaoPrimario`, `botaoSecundario`, `opcao`, `grade`). Use-os e não invente novos sem necessidade. Os ícones são componentes gerados no build pelo `unplugin-icons` (`import Icone from '~icons/solar/…-linear'`), sem dependência em tempo de execução. A fonte Inter vem do `@fontsource-variable/inter`, e o app não depende de CDN.
 
 | Elemento            | Classes Tailwind                                                                                                       |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Fundo da página     | `bg-[#EAEAE5] text-stone-900` (texto base `#1C1C1C`)                                                                   |
+| Fundo da página     | `bg-papel text-tinta` (`#EAEAE5` e `#1C1C1C`)                                                                          |
 | Superfícies         | `bg-white` (realce/hover), `bg-stone-100/50` (cabeçalho de seção), `bg-stone-200`                                      |
 | Bordas e divisórias | `border-stone-300` (linhas finas de 1px, sem sombras)                                                                  |
 | Fonte               | Inter (`font-sans`); títulos `font-medium tracking-tight`                                                              |
@@ -174,7 +193,7 @@ O design system não define cores de estado: use `red-700` para erro, `emerald-7
 - **Testes:**
   - Domínio: unitários com os exemplos do enunciado como casos.
   - API e banco: e2e contra um SQLite real (`backend/test.db`), sem mock de Prisma. O `globalSetup` (`test/preparar-banco.ts`) recria o arquivo, aplica as migrations reais e roda o seed. Os arquivos rodam em sequência, e cada um limpa os agendamentos que criar.
-  - Front: Vitest + Testing Library com `fetch` mockado.
+  - Front: Vitest + Testing Library. O `simularApi()` (`src/test/apiFalsa.tsx`) troca o `fetch` por rotas `'MÉTODO /caminho'` e registra as chamadas. Os testes usam papéis e rótulos acessíveis (`getByRole`, `getByLabelText`), não classes CSS.
   - Relógio: `vi.useFakeTimers({ toFake: ['Date'] })` + `vi.setSystemTime()`; não existe abstração de relógio.
 - **Commits:** pequenos, em [Conventional Commits](https://www.conventionalcommits.org/pt-br/), em português (`feat(api): …`, `test(agenda): …`, `docs: …`). Cada commit deixa `lint`, `typecheck` e `test` verdes.
 
