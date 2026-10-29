@@ -10,6 +10,8 @@
     "frontend"
   ],
   "scripts": {
+    "db:setup": "npm run db:setup -w backend",
+    "db:reset": "npm run db:reset -w backend",
     "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run dev -w backend\" \"npm run dev -w frontend\"",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
