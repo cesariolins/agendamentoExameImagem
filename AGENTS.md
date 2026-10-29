@@ -96,25 +96,26 @@ Premissas adotadas (detalhadas no README):
 
 Prefixo global `/api`. Respostas de data/hora em ISO 8601 com offset (`2026-11-03T08:40:00-03:00`); o `inicio` enviado **precisa** ter offset.
 
-| Método e rota                                        | Descrição                                                                    |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `GET /exames?busca=`                                 | Busca por nome sem diferenciar maiúsculas nem acentos (`torax` acha "Tórax") |
-| `GET /medicos`                                       | Médicos com os turnos semanais (`diaSemana` 0 = domingo … 6 = sábado)        |
-| `GET /medicos/:id/horarios?data=YYYY-MM-DD&exameId=` | Horários livres do médico na data, para a duração daquele exame              |
-| `POST /agendamentos`                                 | Cria o agendamento `{ pacienteNome, exameId, medicoId, inicio }`             |
-| `GET /agendamentos?medicoId=&data=&status=`          | Lista agendamentos ordenados por início                                      |
-| `PATCH /agendamentos/:id/cancelar`                   | Cancelamento lógico (idempotente)                                            |
+| Método e rota                                        | Descrição                                                                                            |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `GET /exames?busca=`                                 | Busca por nome sem diferenciar maiúsculas nem acentos (`torax` acha "Tórax")                         |
+| `GET /medicos`                                       | Médicos com os turnos semanais (`diaSemana` 0 = domingo … 6 = sábado)                                |
+| `GET /medicos/:id/horarios?data=YYYY-MM-DD&exameId=` | Horários livres na data para a duração do exame; `atendeNoDia` distingue "não atende" de "sem vagas" |
+| `POST /agendamentos`                                 | Cria o agendamento `{ pacienteNome, exameId, medicoId, inicio }`                                     |
+| `GET /agendamentos?medicoId=&data=&status=`          | Lista agendamentos ordenados por início                                                              |
+| `PATCH /agendamentos/:id/cancelar`                   | Cancelamento lógico (idempotente)                                                                    |
 
 ### Erros
 
-Formato único, produzido pelo filtro global: `{ statusCode, codigo, mensagem, detalhes? }`, com mensagens em pt-BR. Exceções de domínio usam `ErroDeNegocio(codigo)` e o catálogo em `src/comum/erros.ts`; nenhum service lança `HttpException` solta.
+Formato único, produzido pelo filtro global (`src/comum/filtro-de-erros.ts`): `{ statusCode, codigo, mensagem, detalhes? }`, com mensagens em pt-BR. Exceções de domínio usam `ErroDeNegocio(codigo)` e o catálogo em `src/comum/erros.ts`; nenhum service lança `HttpException` solta. Erros do Nest/Express (rota inexistente, JSON malformado) também saem nesse formato, e erros inesperados viram 500 sem vazar detalhes (que ficam só no log).
 
-| HTTP | Códigos                                                                                        |
-| ---- | ---------------------------------------------------------------------------------------------- |
-| 400  | `DADOS_INVALIDOS` (com `detalhes` por campo)                                                   |
-| 404  | `EXAME_NAO_ENCONTRADO`, `MEDICO_NAO_ENCONTRADO`, `AGENDAMENTO_NAO_ENCONTRADO`                  |
-| 409  | `CONFLITO_DE_HORARIO`                                                                          |
-| 422  | `HORARIO_NO_PASSADO`, `FORA_DO_EXPEDIENTE`, `HORARIO_FORA_DA_GRADE`, `AGENDAMENTO_JA_INICIADO` |
+| HTTP | Códigos                                                                                              |
+| ---- | ---------------------------------------------------------------------------------------------------- |
+| 400  | `DADOS_INVALIDOS` (com `detalhes` por campo)                                                         |
+| 404  | `EXAME_NAO_ENCONTRADO`, `MEDICO_NAO_ENCONTRADO`, `AGENDAMENTO_NAO_ENCONTRADO`, `ROTA_NAO_ENCONTRADA` |
+| 409  | `CONFLITO_DE_HORARIO`                                                                                |
+| 422  | `HORARIO_NO_PASSADO`, `FORA_DO_EXPEDIENTE`, `HORARIO_FORA_DA_GRADE`, `AGENDAMENTO_JA_INICIADO`       |
+| 500  | `ERRO_INTERNO`                                                                                       |
 
 ## Arquitetura do frontend
 
@@ -151,7 +152,8 @@ O design system não define cores de estado: use `red-700` para erro, `emerald-7
 - **Idioma:** o domínio fica em **português**, para bater com o enunciado (`Exame`, `Medico`, `Agendamento`, `gerarHorarios`, `/exames`). Os nomes impostos pelos frameworks ficam como são (`onModuleInit`, `useQuery`). Mensagens, UI e documentação em pt-BR.
 - **ESM no backend:** imports relativos terminam em `.js` (`import { X } from './x.js'`).
 - **Simplicidade:** nada de interface com uma implementação só, repositório genérico ou camada "por cerimônia". A regra de negócio mora em funções puras, o service orquestra e o controller só traduz HTTP.
-- **Validação nas bordas:** os DTOs usam `class-validator`, com mensagens em pt-BR. O domínio assume dados já validados.
+- **Validação nas bordas:** os DTOs usam `class-validator`, com mensagens em pt-BR. O domínio assume dados já validados. Validadores reutilizáveis (`IsData`, `IsDataHoraComFuso`, `ID_DA_ROTA`) ficam em `src/comum/validacao.ts`.
+- **Swagger sem duplicação:** as classes de entrada e de resposta ficam em arquivos `*.dto.ts`, e o plugin do `@nestjs/swagger` (`nest-cli.json`) gera a documentação a partir dos tipos, dos decorators do `class-validator` e dos comentários JSDoc (`@example`). Os erros de cada rota são documentados com `@RespostasDeErro(...códigos)`, direto do catálogo.
 - **Testes:**
   - Domínio: unitários com os exemplos do enunciado como casos.
   - API e banco: e2e contra um SQLite real (`backend/test.db`), sem mock de Prisma. O `globalSetup` (`test/preparar-banco.ts`) recria o arquivo, aplica as migrations reais e roda o seed. Os arquivos rodam em sequência, e cada um limpa os agendamentos que criar.
