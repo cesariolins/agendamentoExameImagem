@@ -1,0 +1,21 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Banco SQLite local e de testes
+*.db
+*.db-journal
+
+# Prisma Client gerado (recriado no postinstall)
+backend/src/generated/
+
+.env
+.env.*
+!.env.example
+
+.DS_Store
+*.log
+.vscode/*
+!.vscode/extensions.json
+.idea/
