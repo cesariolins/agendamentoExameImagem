@@ -11,10 +11,14 @@
   ],
   "scripts": {
     "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run dev -w backend\" \"npm run dev -w frontend\"",
-    "lint": "npm run lint --workspaces",
-    "typecheck": "npm run typecheck --workspaces",
-    "test": "npm run test --workspaces",
-    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
     "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6",
+    "prettier": "^3.9.10"
   }
 }
