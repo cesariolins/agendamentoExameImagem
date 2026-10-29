@@ -1,0 +1,50 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-papel: #eaeae5;
+  --color-tinta: #1c1c1c;
+  --ease-arquiteto: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html {
+    background-color: var(--color-papel);
+    color: var(--color-tinta);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-stone-800);
+    color: white;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-stone-900);
+    outline-offset: 2px;
+  }
+
+  input[type='date']::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
+@keyframes surgir {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+}
+
+@utility animate-surgir {
+  animation: surgir 0.6s var(--ease-arquiteto) both;
+}
